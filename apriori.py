@@ -1,6 +1,5 @@
 import itertools
 
-# Function to calculate support for itemsets
 def calculate_support(dataset, itemset):
     itemset = set(itemset)
     count = 0
@@ -9,7 +8,6 @@ def calculate_support(dataset, itemset):
             count += 1
     return count / len(dataset)
 
-# Function to generate candidate itemsets of length 1
 def generate_candidates(dataset):
     candidates = set()
     for transaction in dataset:
@@ -17,7 +15,6 @@ def generate_candidates(dataset):
             candidates.add(frozenset([item]))
     return candidates
 
-# Function to generate candidate itemsets of length k
 def generate_candidate_k_itemsets(frequent_itemsets, k):
     candidates = set()
     for itemset1, itemset2 in itertools.combinations(frequent_itemsets, 2):
@@ -26,7 +23,6 @@ def generate_candidate_k_itemsets(frequent_itemsets, k):
             candidates.add(union_itemset)
     return candidates
 
-# Function to perform the Apriori algorithm
 def apriori(dataset, min_support):
     # Step 1: Convert the dataset into a list of transactions
     transactions = [set(transaction) for transaction in dataset]
