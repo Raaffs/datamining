@@ -1,55 +1,32 @@
-import random
-import matplotlib.pyplot as plt
+import pandas as pd
+from google.colab import files
 
-# Generate random data points
-data = [
-    [random.randint(0, 150), random.randint(0, 150)] for _ in range(1000)
-]
+house_data = {
+    "age": [30, 25, 50, 32, 42, 40, 45, 43, None, 32, 60, 50, 47, -2, 48, 36, 36, 28, None, 29, 30, 54],
+    "owns": [True, True, True, False, None, True, True, False, None, None, True, True, False, True, False, True, True, True, False, True, True, None],
+    "salary": [55000, 72000, 83000, 48000, 51000, None, 67000, 45000, 53000, 46000, 85000, 75000, 49000, 68000, 54000, 62000, 69000, 71000, 54000, 56000, -454545, None],
+    "total_rooms": [6, 4, 8, 3, 0, 7, 5, 6, 4, 3, 9, 7, 4, 5, 6, 6, 7, 6, 5, 6, 4, 7]
+}
+df = pd.DataFrame(house_data)
 
-def euclidean_distance(p1, p2):
-    return sum((a - b) ** 2 for a, b in zip(p1, p2)) ** 0.5
+csv_file_path = "/content/house_data.csv"
+df.to_csv(csv_file_path, index=False)
+df = pd.read_csv(csv_file_path)
 
-def sum_columns(points):
-    return [sum(col) for col in zip(*points)] if points else []
+valid_ages = df['age'][df['age'] > 0]
+mean_age = valid_ages.mean()
 
-def average_columns(sums, count):
-    return [sum / count for sum in sums]
+df['age'] = df['age'].apply(lambda x: mean_age if pd.isna(x) or x < 0 else x)
 
-def mean(points):
-    return average_columns(sum_columns(points), len(points)) if points else []
+print(df)
 
-def k_means(data, k, max_iters=200):
-    centroids = random.sample(data, k)
+mode_owns = df['owns'].mode()[0]
+df['owns'] = df['owns'].apply(lambda x: mode_owns if x is None else x)
+print(df)
 
-    for _ in range(max_iters):
-        clusters = [[] for _ in range(k)]
-        for point in data:
-            cluster_index = min(range(k), key=lambda i: euclidean_distance(point, centroids[i]))
-            clusters[cluster_index].append(point)
+valid_salarys = df['salary'][df['salary'] > 0]
+mean_salary = valid_salarys.mean()
 
-        new_centroids = [mean(cluster) for cluster in clusters]
-        if new_centroids == centroids:
-            break
-        centroids = new_centroids
+df['salary'] = df['salary'].apply(lambda x: mean_salary if pd.isna(x) or x < 0 else x)
 
-    return centroids, clusters
-
-# Apply K-Means to the data
-centroids, clusters = k_means(data, 3)  # You can change k to whatever value you want
-
-# Plotting the clusters
-plt.figure(figsize=(8, 6))  # Set the figure size
-for i, cluster in enumerate(clusters):
-    cluster_points = list(zip(*cluster))
-    plt.scatter(cluster_points[0], cluster_points[1], label=f"Cluster {i + 1}", s=100, alpha=0.6, edgecolors='w')
-
-centroid_x, centroid_y = zip(*centroids)
-plt.scatter(centroid_x, centroid_y, marker='x', color='black', s=200, label="Centroids", linewidths=2)
-
-# Aesthetic enhancements
-plt.title("K-Means Clustering", fontsize=16, weight='bold')
-plt.xlabel("X-axis", fontsize=12)
-plt.ylabel("Y-axis", fontsize=12)
-plt.grid(True, linestyle='--', alpha=0.6)  # Add grid for better readability
-plt.legend()
-plt.show()
+print(df)
