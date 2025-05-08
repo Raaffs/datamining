@@ -1,62 +1,76 @@
-from itertools import combinations
+import pandas as pd
+import itertools
+import numpy as np
 
-# Function to calculate the support of itemsets
-def calculate_support(itemset, transactions):
-    count = sum(1 for transaction in transactions if set(itemset).issubset(set(transaction)))
-    return count / len(transactions)
+# Function to calculate support for itemsets
+def calculate_support(dataset, itemset):
+    itemset = set(itemset)
+    count = 0
+    for transaction in dataset:
+        if itemset.issubset(set(transaction)):
+            count += 1
+    return count / len(dataset)
 
-# Function to generate frequent itemsets using the Apriori algorithm
-def apriori(transactions, min_support):
-    # Step 1: Generate 1-itemsets
-    itemsets = set(item for transaction in transactions for item in transaction)
-    frequent_itemsets = {frozenset([item]): calculate_support([item], transactions) for item in itemsets}
+def generate_candidates(dataset):
+    candidates = set()
+    for transaction in dataset:
+        for item in transaction:
+            candidates.add(frozenset([item]))
+    return candidates
+
+def generate_candidate_k_itemsets(frequent_itemsets, k):
+    candidates = set()
+    for itemset1, itemset2 in itertools.combinations(frequent_itemsets, 2):
+        union_itemset = itemset1.union(itemset2)
+        if len(union_itemset) == k:
+            candidates.add(union_itemset)
+    return candidates
+
+def apriori(dataset, min_support):
+    # Step 1: Convert the dataset into a list of transactions
+    transactions = [set(transaction) for transaction in dataset]
     
-    # Step 2: Prune non-frequent 1-itemsets
-    frequent_itemsets = {itemset: support for itemset, support in frequent_itemsets.items() if support >= min_support}
+    # Step 2: Generate candidates of length 1
+    candidates = generate_candidates(transactions)
     
-    # Step 3: Iteratively generate k-itemsets and prune non-frequent ones
-    all_frequent_itemsets = dict(frequent_itemsets)  # Store all frequent itemsets
-    k = 2  # Start with 2-itemsets
-    while True:
-        # Generate candidate k-itemsets from (k-1)-itemsets
-        candidate_itemsets = set()
-        frequent_itemset_list = list(frequent_itemsets.keys())
-        for i in range(len(frequent_itemset_list)):
-            for j in range(i + 1, len(frequent_itemset_list)):
-                candidate = frequent_itemset_list[i] | frequent_itemset_list[j]  # Union of two itemsets
-                if len(candidate) == k:  # Only consider itemsets of size k
-                    candidate_itemsets.add(candidate)
+    # Step 3: Generate frequent itemsets
+    frequent_itemsets = []
+    frequent_itemsets_k = []
+    while candidates:
+        # Calculate support for each candidate
+        itemset_support = {itemset: calculate_support(transactions, itemset) for itemset in candidates}
         
-        # Step 4: Calculate support for candidate itemsets
-        candidate_support = {itemset: calculate_support(itemset, transactions) for itemset in candidate_itemsets}
+        # Prune non-frequent itemsets (those that don't meet the min_support)
+        frequent_itemsets_k = {itemset for itemset, support in itemset_support.items() if support >= min_support}
         
-        # Step 5: Prune non-frequent itemsets
-        frequent_itemsets = {itemset: support for itemset, support in candidate_support.items() if support >= min_support}
-        
-        if not frequent_itemsets:  # No frequent itemsets found, stop
+        if not frequent_itemsets_k:
             break
         
-        # Add the frequent itemsets to the list of all frequent itemsets
-        all_frequent_itemsets.update(frequent_itemsets)
+        frequent_itemsets.append(frequent_itemsets_k)
         
-        k += 1  # Move to the next size itemsets
+        # Generate candidates for the next iteration (next size)
+        candidates = generate_candidate_k_itemsets(frequent_itemsets_k, len(next(iter(frequent_itemsets_k))))
+    
+    return frequent_itemsets
 
-    return all_frequent_itemsets
-
-# Example transaction dataset
-transactions = [
-    ['milk', 'bread', 'butter'],
-    ['bread', 'butter'],
-    ['milk', 'bread'],
-    ['bread', 'butter', 'jam'],
-    ['milk', 'bread', 'butter'],
-    ['bread', 'jam']
+dataset = [
+    ['apple', 'banana', 'milk'],
+    ['apple', 'banana'],
+    ['apple', 'milk'],
+    ['banana', 'milk'],
+    ['apple', 'banana', 'milk', 'orange'],
+    ['banana', 'milk', 'orange'],
 ]
 
-# Run the Apriori algorithm with minimum support threshold
-min_support = 0.4
-frequent_itemsets = apriori(transactions, min_support)
+# Minimum support threshold (e.g., 0.5 means itemsets must appear in at least 50% of transactions)
+min_support = 0.5
 
-# Print the frequent itemsets and their support values
-for itemset, support in frequent_itemsets.items():
-    print(f"Itemset: {set(itemset)}, Support: {support:.2f}")
+# Run Apriori algorithm
+frequent_itemsets = apriori(dataset, min_support)
+
+# Print frequent itemsets found by Apriori
+for k, itemsets in enumerate(frequent_itemsets, start=1):
+    print(f"Frequent Itemsets of size {k}:")
+    for itemset in itemsets:
+        print(f"  {set(itemset)}")
+

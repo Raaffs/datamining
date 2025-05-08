@@ -1,30 +1,23 @@
-import math
+import numpy as np
+import pandas as pd
 
 # Function to calculate Gini Impurity for a set of labels
 def gini_impurity(labels):
     total = len(labels)
     if total == 0:
         return 0
-    label_counts = {}
-    for label in labels:
-        if label not in label_counts:
-            label_counts[label] = 0
-        label_counts[label] += 1
+    # Count the frequency of each label
+    label_counts = labels.value_counts()
     gini = 1
-    for count in label_counts.values():
+    for count in label_counts:
         probability = count / total
         gini -= probability ** 2
     return gini
 
-# Function to split a dataset based on a feature and a threshold
+# Function to split the data based on a feature and threshold
 def split_data(dataset, feature_index, threshold):
-    left_split = []
-    right_split = []
-    for row in dataset:
-        if row[feature_index] <= threshold:
-            left_split.append(row)
-        else:
-            right_split.append(row)
+    left_split = dataset[dataset.iloc[:, feature_index] <= threshold]
+    right_split = dataset[dataset.iloc[:, feature_index] > threshold]
     return left_split, right_split
 
 # Function to find the best split
@@ -34,23 +27,21 @@ def best_split(dataset):
     best_left_split = None
     best_right_split = None
     
-    num_features = len(dataset[0]) - 1  # Last column is the label
+    num_features = dataset.shape[1] - 1  # Last column is the label
     
     for feature_index in range(num_features):
-        thresholds = set(row[feature_index] for row in dataset)
+        thresholds = dataset.iloc[:, feature_index].unique()  # Get unique values for the feature
         
         for threshold in thresholds:
             left_split, right_split = split_data(dataset, feature_index, threshold)
             
             # Skip if either split is empty
-            if not left_split or not right_split:
+            if left_split.empty or right_split.empty:
                 continue
             
-            # Calculate the Gini impurity for the split
-            left_labels = [row[-1] for row in left_split]
-            right_labels = [row[-1] for row in right_split]
-            gini_left = gini_impurity(left_labels)
-            gini_right = gini_impurity(right_labels)
+            # Calculate the Gini Impurity for the split
+            gini_left = gini_impurity(left_split.iloc[:, -1])
+            gini_right = gini_impurity(right_split.iloc[:, -1])
             
             # Weighted Gini Impurity
             weighted_gini = (len(left_split) / len(dataset)) * gini_left + (len(right_split) / len(dataset)) * gini_right
@@ -65,22 +56,22 @@ def best_split(dataset):
 
 # Function to build the decision tree recursively
 def build_tree(dataset, max_depth=None, depth=0):
-    labels = [row[-1] for row in dataset]
+    labels = dataset.iloc[:, -1]
     
     # If the dataset is pure (all labels are the same), return a leaf node
-    if len(set(labels)) == 1:
-        return labels[0]
+    if labels.nunique() == 1:
+        return labels.iloc[0]
     
     # If max_depth is reached, return the most frequent label
     if max_depth is not None and depth >= max_depth:
-        return max(set(labels), key=labels.count)
+        return labels.mode().iloc[0]
     
     # Find the best split
     best_split_point, left_split, right_split = best_split(dataset)
     
     # If no valid split found (cannot split further), return the most frequent label
     if best_split_point is None:
-        return max(set(labels), key=labels.count)
+        return labels.mode().iloc[0]
     
     # Recursively build left and right subtrees
     left_tree = build_tree(left_split, max_depth, depth + 1)
@@ -101,14 +92,14 @@ def predict(tree, row):
         return predict(tree[2], row)  # Right subtree
 
 # Example dataset: Last column is the label
-dataset = [
-    [2.7, 1.1, 'A'],
-    [1.9, 1.8, 'A'],
-    [3.0, 3.4, 'B'],
-    [3.7, 3.8, 'B'],
-    [2.2, 1.3, 'A'],
-    [4.2, 3.9, 'B'],
-]
+data = {
+    'Feature1': [2.7, 1.9, 3.0, 3.7, 2.2, 4.2],
+    'Feature2': [1.1, 1.8, 3.4, 3.8, 1.3, 3.9],
+    'Label': ['A', 'A', 'B', 'B', 'A', 'B']
+}
+
+# Convert to pandas DataFrame
+dataset = pd.DataFrame(data)
 
 # Build the decision tree (with max depth of 3)
 tree = build_tree(dataset, max_depth=3)
@@ -117,11 +108,12 @@ tree = build_tree(dataset, max_depth=3)
 print("Decision Tree Structure:")
 print(tree)
 
-# Example predictions
+# Example predictions (test data)
 test_data = [
     [2.5, 1.4],  # Expected to predict 'A'
     [3.5, 3.5],  # Expected to predict 'B'
 ]
 
+# Make predictions for the test data
 for row in test_data:
     print(f"Prediction for {row}: {predict(tree, row)}")
